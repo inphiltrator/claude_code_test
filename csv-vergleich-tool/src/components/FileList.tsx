@@ -2,6 +2,7 @@ import { FileText, X } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
+import { extractVersionNumber } from '@/lib/csvParser';
 
 interface FileListProps {
   type: 'current' | 'old';
@@ -33,31 +34,42 @@ export function FileList({ type, title }: FileListProps) {
         {title} ({files.length})
       </h3>
       <div className="grid gap-2">
-        {files.map((file) => (
-          <Card key={file.id}>
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <FileText className="h-6 w-6 text-primary flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate text-sm">{file.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {file.rowCount} Zeilen • {formatFileSize(file.size)}
-                    </p>
+        {files.map((file) => {
+          const version = extractVersionNumber(file.name);
+          return (
+            <Card key={file.id}>
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <FileText className="h-6 w-6 text-primary flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium truncate text-sm">{file.name}</p>
+                        {version && (
+                          <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs font-medium rounded">
+                            LM{version}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {file.rowCount} Zeilen • {formatFileSize(file.size)}
+                        {file.headers.length > 0 && ` • ${file.headers.length} Spalten`}
+                      </p>
+                    </div>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeFile(file.id)}
+                    className="text-destructive hover:text-destructive h-8 w-8"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeFile(file.id)}
-                  className="text-destructive hover:text-destructive h-8 w-8"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

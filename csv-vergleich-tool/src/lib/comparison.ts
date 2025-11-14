@@ -14,6 +14,27 @@ function valuesEqual(val1: string, val2: string, tolerance: number): boolean {
   return false;
 }
 
+/**
+ * Erstellt einen eindeutigen Schlüssel für eine Zeile
+ * - Bei Koordinaten-Dateien (2 Spalten): Composite Key aus X_Y
+ * - Sonst: Nutzt die angegebene Schlüsselspalte
+ */
+function createRowKey(row: string[], keyColumn: number, headers: string[]): string {
+  // Prüfe ob es Koordinaten-Daten sind (genau 2 Spalten mit "koordinate" im Namen)
+  const isCoordinateData = headers.length === 2 &&
+    headers.some(h => h.toLowerCase().includes('koordinate'));
+
+  if (isCoordinateData || keyColumn === -1) {
+    // Composite Key aus den ersten beiden Spalten (X, Y)
+    const x = row[0]?.trim() || '';
+    const y = row[1]?.trim() || '';
+    return `${x}_${y}`;
+  } else {
+    // Einzelne Schlüsselspalte
+    return row[keyColumn]?.trim() || '';
+  }
+}
+
 export function compareCSVFiles(
   baseline: CSVFile,
   compared: CSVFile,
@@ -25,7 +46,7 @@ export function compareCSVFiles(
   // Maps für schnellen Lookup erstellen
   const baselineMap = new Map<string, string[]>();
   baseline.content.slice(1).forEach((row) => {
-    const key = row[keyColumn]?.trim();
+    const key = createRowKey(row, keyColumn, baseline.headers);
     if (key) {
       baselineMap.set(key, row);
     }
@@ -33,7 +54,7 @@ export function compareCSVFiles(
 
   const comparedMap = new Map<string, string[]>();
   compared.content.slice(1).forEach((row) => {
-    const key = row[keyColumn]?.trim();
+    const key = createRowKey(row, keyColumn, compared.headers);
     if (key) {
       comparedMap.set(key, row);
     }
@@ -61,7 +82,11 @@ export function compareCSVFiles(
       const changedColumns: number[] = [];
       const columnDiffs: RowDiff['columnDiffs'] = [];
 
-      for (let i = 0; i < Math.max(baselineRow.length, comparedRow.length); i++) {
+      // Bei Koordinaten-Daten: Alle Spalten prüfen
+      // Bei anderen Daten: Nur Nicht-Key-Spalten prüfen
+      const startColumn = 0; // Immer alle Spalten prüfen für vollständige Diff-Info
+
+      for (let i = startColumn; i < Math.max(baselineRow.length, comparedRow.length); i++) {
         const oldVal = baselineRow[i]?.trim() || '';
         const newVal = comparedRow[i]?.trim() || '';
 
