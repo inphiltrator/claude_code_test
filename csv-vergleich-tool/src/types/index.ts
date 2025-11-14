@@ -53,3 +53,23 @@ export interface RowDiff {
 }
 
 export type ChangeFilter = 'all' | 'new' | 'changed' | 'deleted';
+
+export interface FileCategory {
+  key: string;          // "WIN" | "COL_240x240" | "COL_280x200_BauBuche"
+  displayName: string;  // "WIN Fenster" | "COL 240×240" | "COL 280×200 BauBuche"
+  type: string;         // "WIN" | "COL"
+  dimensions?: string;  // "240x240" | "280x200"
+  material?: string;    // "GLVL_S" | "BauBuche_GL75"
+}
+
+export interface CategoryGroup {
+  category: FileCategory;
+  results: ComparisonResult[];
+  summary: {
+    totalComparisons: number;
+    totalNew: number;
+    totalChanged: number;
+    totalDeleted: number;
+    avgChangeRate: number;
+  };
+}

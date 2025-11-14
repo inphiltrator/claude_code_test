@@ -1,4 +1,4 @@
-import type { CSVFile, ComparisonSettings, ComparisonResult, RowDiff } from '@/types';
+import type { CSVFile, ComparisonSettings, ComparisonResult, RowDiff, FileCategory, CategoryGroup } from '@/types';
 
 function valuesEqual(val1: string, val2: string, tolerance: number): boolean {
   if (val1 === val2) return true;
@@ -142,4 +142,91 @@ export function compareMultipleFiles(
   return files
     .filter(file => file.id !== baseline.id)
     .map(file => compareCSVFiles(baseline, file, settings));
+}
+
+export function extractCategory(filename: string): FileCategory {
+  // Entferne Version und Basis-Präfix
+  // LM545_BLW_V3_L01_columns_COL_int_240_240_GLVL_S_koordinaten.csv
+
+  const winMatch = filename.match(/_(WIN)_/i);
+  if (winMatch) {
+    return {
+      key: 'WIN',
+      displayName: 'WIN Fenster',
+      type: 'WIN'
+    };
+  }
+
+  const colMatch = filename.match(/_(COL)_int_(\d+)_(\d+)(?:_([^_]+?))?_/i);
+  if (colMatch) {
+    const [, , width, height, material] = colMatch;
+    const dimensions = `${width}x${height}`;
+    const materialName = material || '';
+
+    const key = material
+      ? `COL_${dimensions}_${material}`
+      : `COL_${dimensions}`;
+
+    const displayName = material
+      ? `COL ${width}×${height} ${material}`
+      : `COL ${width}×${height}`;
+
+    return {
+      key,
+      displayName,
+      type: 'COL',
+      dimensions,
+      material: materialName || undefined
+    };
+  }
+
+  // Fallback
+  return {
+    key: 'OTHER',
+    displayName: 'Sonstige',
+    type: 'OTHER'
+  };
+}
+
+export function groupResultsByCategory(results: ComparisonResult[]): CategoryGroup[] {
+  const groups = new Map<string, CategoryGroup>();
+
+  results.forEach(result => {
+    const category = extractCategory(result.comparedFileName);
+
+    if (!groups.has(category.key)) {
+      groups.set(category.key, {
+        category,
+        results: [],
+        summary: {
+          totalComparisons: 0,
+          totalNew: 0,
+          totalChanged: 0,
+          totalDeleted: 0,
+          avgChangeRate: 0
+        }
+      });
+    }
+
+    const group = groups.get(category.key)!;
+    group.results.push(result);
+    group.summary.totalComparisons++;
+    group.summary.totalNew += result.summary.newRows;
+    group.summary.totalChanged += result.summary.changedRows;
+    group.summary.totalDeleted += result.summary.deletedRows;
+  });
+
+  // Durchschnittliche Änderungsrate berechnen
+  groups.forEach(group => {
+    const totalChanges = group.summary.totalNew +
+                        group.summary.totalChanged +
+                        group.summary.totalDeleted;
+    const totalRows = group.results.reduce(
+      (sum, r) => sum + r.summary.totalRows, 0
+    );
+    group.summary.avgChangeRate = totalRows > 0 ? (totalChanges / totalRows) * 100 : 0;
+  });
+
+  return Array.from(groups.values())
+    .sort((a, b) => a.category.displayName.localeCompare(b.category.displayName));
 }

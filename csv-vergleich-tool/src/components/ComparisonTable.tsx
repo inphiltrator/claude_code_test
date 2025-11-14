@@ -163,21 +163,30 @@ export function ComparisonTable({ result }: ComparisonTableProps) {
               ))}
             </thead>
             <tbody>
-              {table.getRowModel().rows.map((row) => (
-                <tr
-                  key={row.id}
-                  className="border-b hover:bg-muted/30 transition-colors"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-4 py-3 text-sm">
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              ))}
+              {table.getRowModel().rows.map((row) => {
+                const changeType = row.original.changeType;
+                const rowClassName = {
+                  new: 'bg-green-50 hover:bg-green-100 dark:bg-green-950 dark:hover:bg-green-900 border-b',
+                  changed: 'bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-950 dark:hover:bg-yellow-900 border-b',
+                  deleted: 'bg-red-50 hover:bg-red-100 dark:bg-red-950 dark:hover:bg-red-900 border-b',
+                };
+
+                return (
+                  <tr
+                    key={row.id}
+                    className={`${rowClassName[changeType]} transition-colors`}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="px-4 py-3 text-sm">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           {table.getRowModel().rows.length === 0 && (
