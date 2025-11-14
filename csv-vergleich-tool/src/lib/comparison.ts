@@ -143,3 +143,46 @@ export function compareMultipleFiles(
     .filter(file => file.id !== baseline.id)
     .map(file => compareCSVFiles(baseline, file, settings));
 }
+
+/**
+ * Vergleicht automatisch Dateien aus zwei Ordnern basierend auf Dateinamen-Matching
+ * Die alte Version dient als Baseline, die aktuelle Version wird verglichen
+ */
+export function compareVersionFolders(
+  oldVersionFiles: CSVFile[],
+  currentVersionFiles: CSVFile[],
+  settings: ComparisonSettings
+): ComparisonResult[] {
+  const results: ComparisonResult[] = [];
+
+  // Erstelle eine Map der aktuellen Dateien basierend auf Dateinamen
+  const currentFilesMap = new Map<string, CSVFile>();
+  currentVersionFiles.forEach((file) => {
+    currentFilesMap.set(file.name, file);
+  });
+
+  // Für jede alte Datei, suche die passende aktuelle Datei
+  oldVersionFiles.forEach((oldFile) => {
+    const currentFile = currentFilesMap.get(oldFile.name);
+
+    if (currentFile) {
+      // Datei existiert in beiden Versionen - Vergleich durchführen
+      const result = compareCSVFiles(oldFile, currentFile, settings);
+      results.push(result);
+    } else {
+      // Datei wurde in der neuen Version entfernt
+      // Optional: Könnte hier eine spezielle "Datei gelöscht" Meldung erstellen
+    }
+  });
+
+  // Optional: Prüfe auf neue Dateien, die nur in der aktuellen Version existieren
+  currentVersionFiles.forEach((currentFile) => {
+    const oldFile = oldVersionFiles.find((f) => f.name === currentFile.name);
+    if (!oldFile) {
+      // Neue Datei - alle Zeilen sind "neu"
+      // Optional: Könnte hier einen speziellen Vergleich erstellen
+    }
+  });
+
+  return results;
+}

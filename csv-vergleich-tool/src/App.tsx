@@ -8,12 +8,16 @@ import { ComparisonTable } from './components/ComparisonTable';
 import { ExportOptions } from './components/ExportOptions';
 import { ThemeToggle } from './components/ThemeToggle';
 import { Button } from './components/ui/button';
-import { Trash2, FileSpreadsheet } from 'lucide-react';
+import { Trash2, FileSpreadsheet, ArrowRight } from 'lucide-react';
+import { Card, CardContent } from './components/ui/card';
 
 function App() {
-  const files = useAppStore((state) => state.files);
+  const currentFiles = useAppStore((state) => state.currentVersionFiles);
+  const oldFiles = useAppStore((state) => state.oldVersionFiles);
   const comparisonResults = useAppStore((state) => state.comparisonResults);
-  const clearFiles = useAppStore((state) => state.clearFiles);
+  const clearAllFiles = useAppStore((state) => state.clearAllFiles);
+
+  const hasAnyFiles = currentFiles.length > 0 || oldFiles.length > 0;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -28,16 +32,16 @@ function App() {
               <div>
                 <h1 className="text-2xl font-bold">CSV-Koordinaten Vergleichstool</h1>
                 <p className="text-sm text-muted-foreground">
-                  Vergleichen Sie mehrere CSV-Dateien mit intelligenter Diff-Visualisierung
+                  Vergleichen Sie alte und aktuelle CSV-Versionen
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {files.length > 0 && (
+              {hasAnyFiles && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={clearFiles}
+                  onClick={clearAllFiles}
                   className="text-destructive hover:text-destructive"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -53,20 +57,58 @@ function App() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <div className="space-y-8">
-          {/* Upload Section */}
+          {/* Upload Section - Zwei Spalten */}
           <section>
-            <FileUpload />
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Alte Version */}
+              <Card className="relative overflow-hidden">
+                <div className="absolute top-0 right-0 bg-muted text-muted-foreground px-3 py-1 text-xs font-medium rounded-bl-lg">
+                  Referenz (Baseline)
+                </div>
+                <CardContent className="p-6">
+                  <FileUpload
+                    type="old"
+                    title="Alte Version"
+                    description="Alle CSV-Dateien der alten Version hochladen"
+                  />
+                  {oldFiles.length > 0 && (
+                    <div className="mt-4">
+                      <FileList type="old" title="Geladene Dateien" />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Pfeil */}
+              <div className="hidden lg:flex items-center justify-center absolute left-1/2 top-24 -translate-x-1/2 z-10">
+                <div className="bg-background border rounded-full p-3">
+                  <ArrowRight className="h-6 w-6 text-primary" />
+                </div>
+              </div>
+
+              {/* Aktuelle Version */}
+              <Card className="relative overflow-hidden">
+                <div className="absolute top-0 right-0 bg-primary text-primary-foreground px-3 py-1 text-xs font-medium rounded-bl-lg">
+                  Aktuell
+                </div>
+                <CardContent className="p-6">
+                  <FileUpload
+                    type="current"
+                    title="Aktuelle Version"
+                    description="Alle CSV-Dateien der aktuellen Version hochladen"
+                  />
+                  {currentFiles.length > 0 && (
+                    <div className="mt-4">
+                      <FileList type="current" title="Geladene Dateien" />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </section>
 
-          {/* Files List */}
-          {files.length > 0 && (
-            <section>
-              <FileList />
-            </section>
-          )}
-
           {/* Comparison Settings */}
-          {files.length > 0 && (
+          {hasAnyFiles && (
             <section>
               <ComparisonSettings />
             </section>
@@ -96,13 +138,13 @@ function App() {
           )}
 
           {/* Empty State */}
-          {files.length === 0 && (
+          {!hasAnyFiles && (
             <div className="text-center py-12">
               <FileSpreadsheet className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
               <h2 className="text-xl font-semibold mb-2">Keine Dateien geladen</h2>
-              <p className="text-muted-foreground max-w-md mx-auto">
-                Laden Sie mehrere CSV-Dateien hoch, um mit dem Vergleich zu beginnen.
-                Sie können beliebig viele Dateien gleichzeitig hochladen.
+              <p className="text-muted-foreground max-w-xl mx-auto">
+                Laden Sie CSV-Dateien in beide Bereiche hoch. Die Dateien werden automatisch
+                anhand ihrer Namen verglichen: Alte Version (links) vs. Aktuelle Version (rechts).
               </p>
             </div>
           )}

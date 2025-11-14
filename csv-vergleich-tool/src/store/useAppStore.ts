@@ -2,16 +2,23 @@ import { create } from 'zustand';
 import type { CSVFile, ComparisonSettings, ComparisonResult } from '@/types';
 
 interface AppState {
-  // Files
-  files: CSVFile[];
-  addFiles: (files: CSVFile[]) => void;
-  removeFile: (id: string) => void;
-  clearFiles: () => void;
+  // Files - Zwei separate Listen für aktuelle und alte Versionen
+  currentVersionFiles: CSVFile[];
+  oldVersionFiles: CSVFile[];
+
+  addCurrentFiles: (files: CSVFile[]) => void;
+  addOldFiles: (files: CSVFile[]) => void;
+
+  removeCurrentFile: (id: string) => void;
+  removeOldFile: (id: string) => void;
+
+  clearCurrentFiles: () => void;
+  clearOldFiles: () => void;
+  clearAllFiles: () => void;
 
   // Settings
   settings: ComparisonSettings;
   updateSettings: (settings: Partial<ComparisonSettings>) => void;
-  setBaselineFile: (id: string) => void;
 
   // Comparison Results
   comparisonResults: ComparisonResult[];
@@ -32,22 +39,45 @@ const defaultSettings: ComparisonSettings = {
 
 export const useAppStore = create<AppState>((set) => ({
   // Files
-  files: [],
-  addFiles: (newFiles) =>
+  currentVersionFiles: [],
+  oldVersionFiles: [],
+
+  addCurrentFiles: (newFiles) =>
     set((state) => ({
-      files: [...state.files, ...newFiles],
+      currentVersionFiles: [...state.currentVersionFiles, ...newFiles],
     })),
-  removeFile: (id) =>
+
+  addOldFiles: (newFiles) =>
     set((state) => ({
-      files: state.files.filter((f) => f.id !== id),
-      settings:
-        state.settings.baselineFileId === id
-          ? { ...state.settings, baselineFileId: null }
-          : state.settings,
+      oldVersionFiles: [...state.oldVersionFiles, ...newFiles],
     })),
-  clearFiles: () =>
+
+  removeCurrentFile: (id) =>
+    set((state) => ({
+      currentVersionFiles: state.currentVersionFiles.filter((f) => f.id !== id),
+    })),
+
+  removeOldFile: (id) =>
+    set((state) => ({
+      oldVersionFiles: state.oldVersionFiles.filter((f) => f.id !== id),
+    })),
+
+  clearCurrentFiles: () =>
     set({
-      files: [],
+      currentVersionFiles: [],
+      comparisonResults: [],
+    }),
+
+  clearOldFiles: () =>
+    set({
+      oldVersionFiles: [],
+      comparisonResults: [],
+    }),
+
+  clearAllFiles: () =>
+    set({
+      currentVersionFiles: [],
+      oldVersionFiles: [],
       settings: defaultSettings,
       comparisonResults: [],
     }),
@@ -57,10 +87,6 @@ export const useAppStore = create<AppState>((set) => ({
   updateSettings: (newSettings) =>
     set((state) => ({
       settings: { ...state.settings, ...newSettings },
-    })),
-  setBaselineFile: (id) =>
-    set((state) => ({
-      settings: { ...state.settings, baselineFileId: id },
     })),
 
   // Comparison Results
