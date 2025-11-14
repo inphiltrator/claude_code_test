@@ -5,8 +5,24 @@ import type { CSVFile } from '@/types';
  * Extrahiert die Versionsnummer aus dem Dateinamen (z.B. LM545 -> "545")
  */
 export function extractVersionNumber(filename: string): string | null {
-  const match = filename.match(/LM(\d+)/);
+  const match = filename.match(/LM(\d+)/i);
   return match ? match[1] : null;
+}
+
+/**
+ * Extrahiert die Versionsnummer als Zahl (z.B. LM545 -> 545)
+ */
+export function extractVersion(filename: string): number {
+  const match = filename.match(/LM(\d+)/i);
+  return match ? parseInt(match[1]) : 0;
+}
+
+/**
+ * Entfernt die Versionsnummer aus dem Dateinamen (Base-Name)
+ * Beispiel: LM545_BLW_V3_koordinaten.csv -> BLW_V3_koordinaten.csv
+ */
+export function getBaseName(filename: string): string {
+  return filename.replace(/LM\d+_?/i, '');
 }
 
 /**

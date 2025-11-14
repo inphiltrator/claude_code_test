@@ -1,4 +1,5 @@
 import type { CSVFile, ComparisonSettings, ComparisonResult, RowDiff } from '@/types';
+import { getBaseName, extractVersion } from './csvParser';
 
 function valuesEqual(val1: string, val2: string, tolerance: number): boolean {
   if (val1 === val2) return true;
@@ -170,8 +171,19 @@ export function compareMultipleFiles(
 }
 
 /**
- * Vergleicht automatisch Dateien aus zwei Ordnern basierend auf Dateinamen-Matching
- * Die alte Version dient als Baseline, die aktuelle Version wird verglichen
+ * Vergleicht automatisch Dateien aus zwei Ordnern basierend auf Base-Namen-Matching
+ *
+ * NEUE LOGIK:
+ * 1. Gruppiert Dateien nach Base-Namen (ohne LM-Versionsnummer)
+ * 2. Pro Gruppe: Niedrigste Version = Baseline
+ * 3. Vergleicht alle höheren Versionen gegen Baseline
+ *
+ * Beispiel:
+ * - LM545_BLW_koordinaten.csv
+ * - LM548_BLW_koordinaten.csv
+ * → Base-Name: "BLW_koordinaten.csv"
+ * → Baseline: LM545 (niedrigste Version)
+ * → Vergleich: LM548 vs LM545
  */
 export function compareVersionFolders(
   oldVersionFiles: CSVFile[],
@@ -180,34 +192,86 @@ export function compareVersionFolders(
 ): ComparisonResult[] {
   const results: ComparisonResult[] = [];
 
-  // Erstelle eine Map der aktuellen Dateien basierend auf Dateinamen
-  const currentFilesMap = new Map<string, CSVFile>();
-  currentVersionFiles.forEach((file) => {
-    currentFilesMap.set(file.name, file);
-  });
+  // Kombiniere alle Dateien (alte + aktuelle) für Gruppierung
+  const allFiles = [...oldVersionFiles, ...currentVersionFiles];
 
-  // Für jede alte Datei, suche die passende aktuelle Datei
-  oldVersionFiles.forEach((oldFile) => {
-    const currentFile = currentFilesMap.get(oldFile.name);
+  // Gruppiere Dateien nach Base-Namen
+  const fileGroups = new Map<string, CSVFile[]>();
 
-    if (currentFile) {
-      // Datei existiert in beiden Versionen - Vergleich durchführen
-      const result = compareCSVFiles(oldFile, currentFile, settings);
-      results.push(result);
-    } else {
-      // Datei wurde in der neuen Version entfernt
-      // Optional: Könnte hier eine spezielle "Datei gelöscht" Meldung erstellen
+  allFiles.forEach((file) => {
+    const baseName = getBaseName(file.name);
+    if (!fileGroups.has(baseName)) {
+      fileGroups.set(baseName, []);
     }
+    fileGroups.get(baseName)!.push(file);
   });
 
-  // Optional: Prüfe auf neue Dateien, die nur in der aktuellen Version existieren
-  currentVersionFiles.forEach((currentFile) => {
-    const oldFile = oldVersionFiles.find((f) => f.name === currentFile.name);
-    if (!oldFile) {
-      // Neue Datei - alle Zeilen sind "neu"
-      // Optional: Könnte hier einen speziellen Vergleich erstellen
+  // Pro Gruppe: Vergleiche alle Versionen gegen die Baseline (niedrigste Version)
+  fileGroups.forEach((files) => {
+    // Sortiere Dateien nach Version (aufsteigend)
+    const sortedFiles = files.sort((a, b) => {
+      const versionA = extractVersion(a.name);
+      const versionB = extractVersion(b.name);
+      return versionA - versionB;
+    });
+
+    // Mindestens 2 Dateien nötig für einen Vergleich
+    if (sortedFiles.length < 2) {
+      return;
+    }
+
+    // Erste Datei (niedrigste Version) = Baseline
+    const baseline = sortedFiles[0];
+
+    // Vergleiche alle höheren Versionen gegen Baseline
+    for (let i = 1; i < sortedFiles.length; i++) {
+      const comparedFile = sortedFiles[i];
+      const result = compareCSVFiles(baseline, comparedFile, settings);
+      results.push(result);
     }
   });
 
   return results;
+}
+
+/**
+ * Gruppiert Dateien nach Base-Namen und gibt Info über die Gruppen zurück
+ */
+export interface FileGroup {
+  baseName: string;
+  files: CSVFile[];
+  baseline: CSVFile | null;
+  versionsToCompare: CSVFile[];
+}
+
+export function groupFilesByBaseName(files: CSVFile[]): FileGroup[] {
+  const fileGroups = new Map<string, CSVFile[]>();
+
+  files.forEach((file) => {
+    const baseName = getBaseName(file.name);
+    if (!fileGroups.has(baseName)) {
+      fileGroups.set(baseName, []);
+    }
+    fileGroups.get(baseName)!.push(file);
+  });
+
+  const groups: FileGroup[] = [];
+
+  fileGroups.forEach((files, baseName) => {
+    // Sortiere nach Version
+    const sortedFiles = files.sort((a, b) => {
+      const versionA = extractVersion(a.name);
+      const versionB = extractVersion(b.name);
+      return versionA - versionB;
+    });
+
+    groups.push({
+      baseName,
+      files: sortedFiles,
+      baseline: sortedFiles.length > 0 ? sortedFiles[0] : null,
+      versionsToCompare: sortedFiles.slice(1)
+    });
+  });
+
+  return groups;
 }
