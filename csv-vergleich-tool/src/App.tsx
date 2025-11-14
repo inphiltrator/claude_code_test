@@ -1,7 +1,7 @@
 import { Toaster } from 'react-hot-toast';
 import { useAppStore } from './store/useAppStore';
 import { FileUpload } from './components/FileUpload';
-import { FileList } from './components/FileList';
+import { FileLists } from './components/FileLists';
 import { ComparisonSettings } from './components/ComparisonSettings';
 import { SummaryDashboard } from './components/SummaryDashboard';
 import { ComparisonTable } from './components/ComparisonTable';
@@ -11,9 +11,12 @@ import { Button } from './components/ui/button';
 import { Trash2, FileSpreadsheet } from 'lucide-react';
 
 function App() {
-  const files = useAppStore((state) => state.files);
+  const baselineFiles = useAppStore((state) => state.baselineFiles);
+  const comparedFiles = useAppStore((state) => state.comparedFiles);
   const comparisonResults = useAppStore((state) => state.comparisonResults);
-  const clearFiles = useAppStore((state) => state.clearFiles);
+  const clearAllFiles = useAppStore((state) => state.clearAllFiles);
+
+  const hasFiles = baselineFiles.length > 0 || comparedFiles.length > 0;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -33,11 +36,11 @@ function App() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {files.length > 0 && (
+              {hasFiles && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={clearFiles}
+                  onClick={clearAllFiles}
                   className="text-destructive hover:text-destructive"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -53,20 +56,29 @@ function App() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <div className="space-y-8">
-          {/* Upload Section */}
-          <section>
-            <FileUpload />
+          {/* Upload Section - Two separate areas */}
+          <section className="grid md:grid-cols-2 gap-6">
+            <FileUpload
+              type="baseline"
+              title="Baseline-Dateien (Alt)"
+              description="Laden Sie die ursprünglichen CSV-Dateien hoch, die als Vergleichsbasis dienen."
+            />
+            <FileUpload
+              type="compared"
+              title="Zu vergleichende Dateien (Neu)"
+              description="Laden Sie die neuen CSV-Dateien hoch, die mit der Baseline verglichen werden sollen."
+            />
           </section>
 
           {/* Files List */}
-          {files.length > 0 && (
+          {hasFiles && (
             <section>
-              <FileList />
+              <FileLists />
             </section>
           )}
 
           {/* Comparison Settings */}
-          {files.length > 0 && (
+          {hasFiles && (
             <section>
               <ComparisonSettings />
             </section>
@@ -96,13 +108,13 @@ function App() {
           )}
 
           {/* Empty State */}
-          {files.length === 0 && (
+          {!hasFiles && (
             <div className="text-center py-12">
               <FileSpreadsheet className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
               <h2 className="text-xl font-semibold mb-2">Keine Dateien geladen</h2>
               <p className="text-muted-foreground max-w-md mx-auto">
-                Laden Sie mehrere CSV-Dateien hoch, um mit dem Vergleich zu beginnen.
-                Sie können beliebig viele Dateien gleichzeitig hochladen.
+                Laden Sie CSV-Dateien hoch, um mit dem Vergleich zu beginnen.
+                Sie können Baseline-Dateien (alt) links und neue Dateien rechts hochladen.
               </p>
             </div>
           )}

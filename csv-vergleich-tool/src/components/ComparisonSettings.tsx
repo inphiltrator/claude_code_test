@@ -8,13 +8,14 @@ import toast from 'react-hot-toast';
 import { Play } from 'lucide-react';
 
 export function ComparisonSettings() {
-  const files = useAppStore((state) => state.files);
+  const baselineFiles = useAppStore((state) => state.baselineFiles);
+  const comparedFiles = useAppStore((state) => state.comparedFiles);
   const settings = useAppStore((state) => state.settings);
   const updateSettings = useAppStore((state) => state.updateSettings);
   const setComparisonResults = useAppStore((state) => state.setComparisonResults);
 
-  const baselineFile = files.find((f) => f.id === settings.baselineFileId);
-  const canCompare = files.length >= 2 && settings.baselineFileId !== null;
+  const baselineFile = baselineFiles.find((f) => f.id === settings.baselineFileId);
+  const canCompare = baselineFiles.length >= 1 && comparedFiles.length >= 1 && settings.baselineFileId !== null;
 
   const handleCompare = () => {
     if (!baselineFile) {
@@ -22,10 +23,15 @@ export function ComparisonSettings() {
       return;
     }
 
+    if (comparedFiles.length === 0) {
+      toast.error('Bitte laden Sie mindestens eine Datei zum Vergleichen hoch');
+      return;
+    }
+
     try {
       toast.loading('Vergleiche werden durchgeführt...', { id: 'compare' });
 
-      const results = compareMultipleFiles(baselineFile, files, settings);
+      const results = compareMultipleFiles(baselineFile, comparedFiles, settings);
       setComparisonResults(results);
 
       toast.success(`${results.length} Vergleiche abgeschlossen`, {
@@ -101,8 +107,10 @@ export function ComparisonSettings() {
 
         {!canCompare && (
           <p className="text-sm text-muted-foreground text-center">
-            {files.length < 2
-              ? 'Mindestens 2 Dateien benötigt'
+            {baselineFiles.length === 0
+              ? 'Bitte Baseline-Datei hochladen'
+              : comparedFiles.length === 0
+              ? 'Bitte Dateien zum Vergleichen hochladen'
               : 'Bitte Baseline-Datei wählen'}
           </p>
         )}

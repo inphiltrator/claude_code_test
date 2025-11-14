@@ -3,10 +3,13 @@ import type { CSVFile, ComparisonSettings, ComparisonResult } from '@/types';
 
 interface AppState {
   // Files
-  files: CSVFile[];
-  addFiles: (files: CSVFile[]) => void;
-  removeFile: (id: string) => void;
-  clearFiles: () => void;
+  baselineFiles: CSVFile[];  // Alte Dateien
+  comparedFiles: CSVFile[];  // Neue Dateien zu vergleichen
+  addBaselineFiles: (files: CSVFile[]) => void;
+  addComparedFiles: (files: CSVFile[]) => void;
+  removeBaselineFile: (id: string) => void;
+  removeComparedFile: (id: string) => void;
+  clearAllFiles: () => void;
 
   // Settings
   settings: ComparisonSettings;
@@ -32,22 +35,41 @@ const defaultSettings: ComparisonSettings = {
 
 export const useAppStore = create<AppState>((set) => ({
   // Files
-  files: [],
-  addFiles: (newFiles) =>
+  baselineFiles: [],
+  comparedFiles: [],
+  addBaselineFiles: (newFiles) =>
+    set((state) => {
+      const files = [...state.baselineFiles, ...newFiles];
+      // Auto-select first baseline file if none selected
+      const baselineFileId = state.settings.baselineFileId || (files.length > 0 ? files[0].id : null);
+      return {
+        baselineFiles: files,
+        settings: { ...state.settings, baselineFileId },
+      };
+    }),
+  addComparedFiles: (newFiles) =>
     set((state) => ({
-      files: [...state.files, ...newFiles],
+      comparedFiles: [...state.comparedFiles, ...newFiles],
     })),
-  removeFile: (id) =>
+  removeBaselineFile: (id) =>
+    set((state) => {
+      const files = state.baselineFiles.filter((f) => f.id !== id);
+      return {
+        baselineFiles: files,
+        settings:
+          state.settings.baselineFileId === id
+            ? { ...state.settings, baselineFileId: files.length > 0 ? files[0].id : null }
+            : state.settings,
+      };
+    }),
+  removeComparedFile: (id) =>
     set((state) => ({
-      files: state.files.filter((f) => f.id !== id),
-      settings:
-        state.settings.baselineFileId === id
-          ? { ...state.settings, baselineFileId: null }
-          : state.settings,
+      comparedFiles: state.comparedFiles.filter((f) => f.id !== id),
     })),
-  clearFiles: () =>
+  clearAllFiles: () =>
     set({
-      files: [],
+      baselineFiles: [],
+      comparedFiles: [],
       settings: defaultSettings,
       comparisonResults: [],
     }),
